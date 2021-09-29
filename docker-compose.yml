@@ -1,0 +1,48 @@
+version: "3.4"
+services:
+
+  db:
+    image: pociagi/db
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - rabbitmq
+    ports:
+      - "666:666"
+
+  pociag-api:
+    image: pociagi/pociag-api
+    build:
+      context: .
+      dockerfile: pociag/Dockerfile
+    depends_on:
+      - rabbitmq
+    ports:
+      - "100:100"
+
+  centrala-api:
+    image: pociagi/centrala-api
+    build:
+      context: .
+      dockerfile: centrala/Dockerfile
+    depends_on:
+      - rabbitmq
+    ports:
+      - "101:101"
+
+  droznik-api:
+    image: pociagi/droznik-api
+    build:
+      context: .
+      dockerfile: droznik/Dockerfile
+    depends_on:
+      - rabbitmq
+    ports:
+      - "102:102"
+  
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672"
+      - "5672:5672"

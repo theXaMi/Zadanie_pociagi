@@ -1,0 +1,1 @@
+print("Centrala wlaczona!")

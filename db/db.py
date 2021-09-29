@@ -1,0 +1,1 @@
+print("Hej jestem baza danych.")
