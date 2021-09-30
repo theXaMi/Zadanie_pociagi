@@ -1,15 +1,40 @@
 version: "3.4"
+
 services:
 
+  redis:
+    image: redis:5.0.4-stretch
+    container_name: redis
+    env_file:
+      - .env
+    restart: ${DOCKER_RESTART_POLICY:-unless-stopped}
+    volumes:
+      - redis:/data
+
   db:
-    image: pociagi/db
+    image: postgres:latest
+    container_name: postgres
+    env_file: database.conf
+    ports:
+      - ${DOCKER_SQL_PORT:-127.0.0.1:5432}:5432
+    volumes:
+      - db_volume:/var/lib/postgresql
+
+  dbworker:
+    image: pociagi/dbworker
+    container_name: dbworker
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: pociagi/db/Dockerfile
+    command: celery -A pociagi.db.tasks worker -B -l info --uid=nobody
     depends_on:
-      - rabbitmq
-    ports:
-      - "666:666"
+      - redis
+    env_file:
+      - .env
+      - database.conf
+    restart: ${DOCKER_RESTART_POLICY:-unless-stopped}
+    volumes:
+      - ${DOCKER_WEB_VOLUME:-./public:/app/public}
 
   pociag-api:
     image: pociagi/pociag-api
@@ -17,9 +42,9 @@ services:
       context: .
       dockerfile: pociag/Dockerfile
     depends_on:
-      - rabbitmq
+      - redis
     ports:
-      - "100:100"
+      - "1100:1100"
 
   centrala-api:
     image: pociagi/centrala-api
@@ -27,9 +52,9 @@ services:
       context: .
       dockerfile: centrala/Dockerfile
     depends_on:
-      - rabbitmq
+      - redis
     ports:
-      - "101:101"
+      - "1200:1200"
 
   droznik-api:
     image: pociagi/droznik-api
@@ -37,12 +62,10 @@ services:
       context: .
       dockerfile: droznik/Dockerfile
     depends_on:
-      - rabbitmq
+      - redis
     ports:
-      - "102:102"
-  
-  rabbitmq:
-    image: rabbitmq:3-management
-    ports:
-      - "15672:15672"
-      - "5672:5672"
+      - "1300:1300"
+
+volumes:
+  redis: {}
+  db_volume: {}
