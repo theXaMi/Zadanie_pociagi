@@ -2,7 +2,8 @@
 
 FROM python:alpine AS basedb
 LABEL maintainer="XaMi <xamioriginal@gmail.com>"
-COPY . /
-RUN apk add libc-dev g++ linux-headers
+COPY . /app/
+RUN apk add g++ linux-headers
+WORKDIR /app
 RUN pip install -r requirements.txt
-CMD [ "python", "db/db.py" ]
+CMD [ "python", "droznik.py" ]

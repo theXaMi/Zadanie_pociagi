@@ -1,9 +1,10 @@
 # syntax=docker/dockerfile:1
 
 FROM python:alpine AS basecentrala
-EXPOSE 102
 LABEL maintainer="XaMi <xamioriginal@gmail.com>"
-COPY . /
-RUN apk add libc-dev g++ linux-headers
+EXPOSE 1200
+COPY . /app/
+WORKDIR /app
+RUN ls | tr -s '\n' ' ' && sleep 10
 RUN pip install -r requirements.txt
-CMD [ "python", "centrala/centrala.py" ]
+CMD [ "python", "centrala.py" ]

@@ -14,19 +14,20 @@ services:
   db:
     image: postgres:latest
     container_name: postgres
-    env_file: database.conf
+    env_file: 
+      - database.conf
     ports:
       - ${DOCKER_SQL_PORT:-127.0.0.1:5432}:5432
     volumes:
       - db_volume:/var/lib/postgresql
 
-  dbworker:
-    image: pociagi/dbworker
-    container_name: dbworker
+  droznik-api:
+    image: pociagi/droznik-api
+    container_name: droznik-api
     build:
-      context: .
-      dockerfile: pociagi/db/Dockerfile
-    command: celery -A pociagi.db.tasks worker -B -l info --uid=nobody
+      context: ./pociagi/droznik
+      dockerfile: .
+    command: celery -A pociagi.droznik.tasks worker -B -l info --uid=nobody
     depends_on:
       - redis
     env_file:
@@ -36,35 +37,25 @@ services:
     volumes:
       - ${DOCKER_WEB_VOLUME:-./public:/app/public}
 
-  pociag-api:
-    image: pociagi/pociag-api
+  pociag-client:
+    image: pociagi/pociag-client
+    container_name: pociag-client
     build:
-      context: .
-      dockerfile: pociag/Dockerfile
+      context: ./pociagi/pociag
+      dockerfile: .
     depends_on:
       - redis
-    ports:
-      - "1100:1100"
 
   centrala-api:
     image: pociagi/centrala-api
+    container_name: centrala-api
     build:
-      context: .
-      dockerfile: centrala/Dockerfile
+      context: ./pociagi/centrala
+      dockerfile: .
     depends_on:
       - redis
     ports:
       - "1200:1200"
-
-  droznik-api:
-    image: pociagi/droznik-api
-    build:
-      context: .
-      dockerfile: droznik/Dockerfile
-    depends_on:
-      - redis
-    ports:
-      - "1300:1300"
 
 volumes:
   redis: {}
