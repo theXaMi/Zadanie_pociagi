@@ -5,6 +5,9 @@ from werkzeug.debug import DebuggedApplication
 
 CELERY_TASK_LIST: list[str] = [
     "pociagi.droznik.tasks",
+    "pociagi.droznik.droznik",
+    "pociagi.centrala.centrala",
+    "pociagi.pociag.pociag",
 ]
 
 def create_app() -> Flask:

@@ -27,13 +27,15 @@ services:
     build:
       context: ./pociagi/droznik
       dockerfile: .
-    command: celery -A pociagi.droznik.tasks worker -B -l info --uid=nobody
+    command: celery -A pociagi.droznik.droznik:celery worker -B -l info -E -Q droznik
     depends_on:
       - redis
     env_file:
       - .env
       - database.conf
     restart: ${DOCKER_RESTART_POLICY:-unless-stopped}
+    ports:
+      - 1100:1100
     volumes:
       - ${DOCKER_WEB_VOLUME:-./public:/app/public}
 
@@ -43,6 +45,7 @@ services:
     build:
       context: ./pociagi/pociag
       dockerfile: .
+    command: celery -A pociag:celery worker -B -l info -E -Q pociag
     depends_on:
       - redis
 
@@ -52,11 +55,15 @@ services:
     build:
       context: ./pociagi/centrala
       dockerfile: .
+    command: celery -A centrala:celery worker -B -l info -E -Q centrala
     depends_on:
       - redis
     ports:
       - "1200:1200"
+    volumes:
+      - centrala:/logs
 
 volumes:
   redis: {}
   db_volume: {}
+  centrala: {}
