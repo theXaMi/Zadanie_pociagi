@@ -6,5 +6,3 @@ COPY . /app/
 RUN apk add --update --no-cache g++ linux-headers
 WORKDIR /app
 RUN pip install -r requirements.txt
-#CMD [ "celery", "-A", "pociag:celery", "worker" ]
-CMD [ "python", "pociag.py" ]

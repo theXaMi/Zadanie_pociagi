@@ -6,8 +6,15 @@ from flask import Flask
 from celery import Celery
 import logging
 
-app = Flask(__name__)
-celery = Celery(app.import_name,broker="redis://redis")
+celery = Celery(__name__,broker="redis://redis")
+
+stations={}
+
+@celery.task
+def getstations(data: dict[int,str]):
+    global stations
+    for i in range(len(list(data.keys()))):
+        stations[i]=data[str(i)]
 
 @celery.task
 def sendspeeddata() -> None:
@@ -16,14 +23,16 @@ def sendspeeddata() -> None:
 
 @celery.task
 def sendstationdata() -> None:
-    data = { "pociag" : { "stationid" : 0 } } #############################
+    try:
+        chosen=randrange(len(list(stations.keys())))
+    except ValueError:
+        logging.error("Didn't receive stations. Please reset droznik-api.")
+        return
+    data = { "pociag" : { "stationid" : chosen } }
+    logging.info("Train incoming to station "+stations[chosen])
     signature("centrala.messagehandler").apply_async(kwargs={"data":data}, queue="centrala")
 
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
     #sender.add_periodic_task(POCIAG_DELAY, signature("pociag.sendspeeddata", args=(), options={"queue": "pociag"}))
-    sender.add_periodic_task(10.0, signature("pociag.sendstationdata", args=(), options={"queue": "pociag"}))
-
-if __name__ == "__main__":
-    app.run()
-    celery.start()
+    sender.add_periodic_task(20.0, signature("pociag.sendstationdata", args=(), options={"queue": "pociag"}))

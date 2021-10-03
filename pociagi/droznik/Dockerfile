@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1
 
-FROM python:alpine AS basedb
+FROM python:3.9.4-slim-buster AS basedb
 LABEL maintainer="XaMi <xamioriginal@gmail.com>"
 COPY . /app/
-RUN apk add g++ linux-headers
 WORKDIR /app
+RUN apt-get update && apt-get install -y procps
 RUN pip install -r requirements.txt
-CMD [ "python", "droznik.py" ]
+CMD [ "python", "./pociagi/droznik/droznik.py" ]

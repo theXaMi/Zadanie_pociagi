@@ -1,43 +1,51 @@
+from traceback import format_exc
+from typing import Any
 from celery.canvas import signature
 from time import strftime
 from flask import Flask
+from flask.json import loads
 from celery import Celery
-from celery.result import allow_join_result
 from celery.utils.log import get_task_logger
+from requests.api import get, post
 
-app = Flask(__name__)
-celery = Celery(app.import_name,broker="redis://redis", backend="cache+memory://")
-logger = get_task_logger(app.import_name)
+celery = Celery(__name__,broker="redis://redis")
+logger = get_task_logger(__name__)
 
+def senddata(postget, data: dict[str, Any], id: int ):
+    logger.debug(data, id)
+    try:
+        resp = postget("http://droznik-api:1100/endpoint/"+str(id), json=data)
+        if resp.ok:
+            logger.info("Droznik acknowledged the message.")
+            return resp.json()
+        else:
+            logger.error("Droznik didn't send an \"ok\" message. Received this instead: "+str(resp.ok))
+    except:
+        logger.error("Can't establish connection to droznik: "+format_exc())
 
 @celery.task
 def openbarrier(data):
-    logger.error(data)
-    newdata = { "centrala" : { data["stationid"] : { "open" : True } } }
-    signature("pociagi.droznik.droznik.messagehandler").apply_async(kwargs={"data":newdata}, queue="droznik")
+    newdata = { "centrala" : { "open" : True } }
+    senddata(post,newdata,data["stationid"])
 
 def handlepociag(data) -> None:
-    logger.debug("Received data: " + str(data) + " of type "+str( type(data) ) )
+    logger.debug("RESPONSE 1: " + str(data) + " of type "+str( type(data) ) )
 
     if "stationid" in data.keys():
-        newdata = { "centrala" : { data["stationid"] : ["open"] } }
-        res = signature("pociagi.droznik.droznik.messagehandler").apply_async(kwargs={"data":newdata}, queue="droznik", expires=10)
-        try:
-            resp = res.get(disable_sync_subtasks=False, timeout=0.1)
-        except:
-            resp=False
-        res.forget()
-        logger.debug(str("Response: "+str(resp)))
+        newdata = { "centrala" : ["open"] }
+        resp=senddata(get,newdata,data["stationid"])
+
         if type(resp)!=type({}):
             logger.warning("Droznik didn't respond correctly. assuming barrier is open.")
-            resp = { data["stationid"]: { "open": True }}
-        if resp[data["stationid"]]["open"]:
-            newdata = { "centrala": { data["stationid"] : { "open" : False } } }
-            res = signature("pociagi.droznik.droznik.messagehandler").apply_async(kwargs={"data":newdata}, queue="droznik", expires=10)
-            try:
-                resp=res.get(disable_sync_subtasks=False, timeout=0.1)
-            except:
-                logger.error("ERROR. DROZNIK DIDN'T RESPOND TO CLOSE COMMAND. ALERT CIVILIANS.")
+            resp = { str(data["stationid"]): { "open": True }}
+        logger.info("RESPONSE 2: "+str(resp))
+        if resp[str(data["stationid"])]["open"]:
+            newdata = { "centrala": { "open" : False } }
+            resp = senddata(post,newdata,data["stationid"])
+            logger.debug("RESPONSE 3: "+str(resp))
+            if resp != {} and resp != "null":
+                logger.error("ERROR. DROZNIK DIDN'T RESPOND CORRECTLY TO CLOSE COMMAND. ALERT CIVILIANS.")
+
         else:
             logger.warning("Anomaly: droznik already closed.")
         signature("centrala.openbarrier").apply_async(kwargs={"data":data}, queue="centrala", countdown=10)
@@ -69,7 +77,3 @@ def messagehandler(data: dict[str, dict]):
         if r in responses.keys():
             responses[r](data[r])
     return 0
-
-if __name__ == "__main__":
-    celery.start()
-    app.run(host="centrala-api",port=1200)

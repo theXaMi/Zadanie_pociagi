@@ -21,13 +21,30 @@ services:
     volumes:
       - db_volume:/var/lib/postgresql
 
+  dbweb:
+    image: dpage/pgadmin4:latest
+    container_name: PGAdmin
+    env_file:
+      - database.conf
+    ports:
+      - ${PGADMIN_LISTEN_PORT:-3838}:3838
+
+  flower:
+    image: pociagi/flower
+    container_name: Flower
+    build:
+      context: ./flower
+      dockerfile: .
+    command: celery --broker=redis://redis flower --port=1300
+    ports:
+      - 1201:1201
+
   droznik-api:
     image: pociagi/droznik-api
     container_name: droznik-api
     build:
       context: ./pociagi/droznik
       dockerfile: .
-    command: celery -A pociagi.droznik.droznik:celery worker -B -l info -E -Q droznik
     depends_on:
       - redis
     env_file:
@@ -59,7 +76,7 @@ services:
     depends_on:
       - redis
     ports:
-      - "1200:1200"
+      - 1200:1200
     volumes:
       - centrala:/logs
 
