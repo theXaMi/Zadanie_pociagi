@@ -2,8 +2,6 @@ from traceback import format_exc
 from typing import Any
 from celery.canvas import signature
 from time import strftime
-from flask import Flask
-from flask.json import loads
 from celery import Celery
 from celery.utils.log import get_task_logger
 from requests.api import get, post

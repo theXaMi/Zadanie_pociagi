@@ -1,21 +1,15 @@
-from time import time
 from celery import Celery
 from celery.canvas import signature
-from flask import Flask, request, jsonify
 from sqlalchemy.sql.functions import now
-try:
-    from pociagi.droznik.stationgenerator import generatestation
-    import pociagi.droznik.models as models
-except:
-    from stationgenerator import generatestation
-    import models
+from stationgenerator import generatestation
+import models
 import logging
 
 app = Flask(__name__)
 celery = Celery(__name__,broker="redis://redis")
 
 @app.route("/endpoint/<id>", methods=["GET","POST"])
-def messagehandler(id): # -> int | dict
+def messagehandler(id):
     data=request.json
     if "centrala" in data.keys():
         data=data["centrala"]
@@ -42,7 +36,7 @@ def messagehandler(id): # -> int | dict
         else:
             return None, 400
 
-def createstations():
+def createstations() -> list[models.Stacja]:
     stations=[]
     for i in range(20):
         while 1:
@@ -65,10 +59,10 @@ def setupdb():
     models.db.create_all()
     return createstations()
 
-def sendstations(data: list[models.Stacja]):
+def sendstations(data: list[models.Stacja]) -> None:
     newdata={}
     for stacja in data:
-        newdata[int(stacja.id)]=stacja.name # int() do usuniecia?
+        newdata[int(stacja.id)]=stacja.name
     signature("pociag.getstations").apply_async(args=(),kwargs={"data":newdata}, queue="pociag")
 
 if __name__=="__main__":
